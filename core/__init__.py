@@ -13,6 +13,13 @@ from core.ingestion import (
 )
 from core.profiler import profile_dataset, DatasetProfile, ColumnProfile
 from core.diagnostics import diagnose_dataset, generate_quality_report, DiagnosticIssue
+from core.baselines import (
+    detect_zscore_anomalies,
+    detect_iqr_anomalies,
+    select_usable_numerical_features,
+    AnomalyDetectionResult,
+)
+from core.ml_anomaly import detect_isolation_forest_anomalies
 
 __all__ = [
     "load_csv",
@@ -27,4 +34,9 @@ __all__ = [
     "diagnose_dataset",
     "generate_quality_report",
     "DiagnosticIssue",
+    "detect_zscore_anomalies",
+    "detect_iqr_anomalies",
+    "select_usable_numerical_features",
+    "detect_isolation_forest_anomalies",
+    "AnomalyDetectionResult",
 ]
