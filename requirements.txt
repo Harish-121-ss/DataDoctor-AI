@@ -1,0 +1,4 @@
+# Core dependencies for DataDoctor AI - Stage 1 (Data Ingestion & Quality Profiling)
+pandas>=2.0.0
+numpy>=1.24.0
+pytest>=8.0.0

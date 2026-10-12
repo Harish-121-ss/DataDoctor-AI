@@ -1,0 +1,11 @@
+employee_id,employee_name,age,department,salary,experience_years,status
+101,Alice Johnson,28,Engineering,75000,5,Active
+102,Bob Smith,34,Marketing,62000,8,Active
+103,Charlie Lee,-4,Finance,89000,12,Active
+104,Diana Prince,41,Engineering,105000,15,Active
+105,Evan Wright,29,,58000,4,Active
+106,Fiona Gallagher,36,HR,invalid_entry,9,Active
+107,George Clark,52,Finance,120000,24,Active
+101,Alice Johnson,28,Engineering,75000,5,Active
+108,Hannah Abbott,24,Marketing,51000,1,Active
+109,Ian Malcolm,45,Engineering,98000,18,Active
