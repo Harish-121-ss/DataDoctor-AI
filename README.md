@@ -1,6 +1,6 @@
 # DataDoctor AI
 
-**DataDoctor AI** is an intelligent tabular dataset quality diagnosis, anomaly detection, and reviewable repair application designed to provide genuine AI/ML proof-of-work for Cognext's *CognitionNext '26* screening.
+**DataDoctor AI** is an intelligent tabular dataset quality diagnosis, anomaly detection, and reviewable repair web application designed to provide genuine AI/ML proof-of-work for Cognext's *CognitionNext '26* screening.
 
 It pairs deterministic structural profiling and rule-based defect diagnosis with unsupervised machine learning (Isolation Forest), statistical baselines (Z-Score and Tukey's IQR), and a safe, auditable cleaning engine that requires explicit user approval before applying any transformation. Original datasets are guaranteed to remain completely immutable.
 
@@ -14,37 +14,52 @@ DataDoctor-AI/
 ├── README.md
 ├── requirements.txt
 ├── pytest.ini
+├── app/
+│   ├── __init__.py
+│   ├── main.py                # Streamlit application entry point
+│   ├── components/            # UI components per view
+│   │   ├── __init__.py
+│   │   ├── overview_view.py   # Ingestion metadata & raw table preview
+│   │   ├── profiling_view.py  # Health score, nulls, duplicates, diagnostics
+│   │   ├── anomaly_view.py    # Isolation Forest & baseline anomaly detection
+│   │   ├── cleaning_view.py   # Reviewable proposals, previews, approvals
+│   │   └── export_view.py     # Cleaned CSV & markdown quality report exports
+│   └── utils/
+│       ├── __init__.py
+│       ├── visualizer.py      # Plotly interactive chart builders
+│       └── report_gen.py      # Markdown quality & remediation audit generator
 ├── core/
 │   ├── __init__.py
-│   ├── ingestion.py          # Resilient CSV reader (delimiters, BOM, size limit)
-│   ├── profiler.py           # Structural & statistical column/dataset profiling
-│   ├── diagnostics.py        # Rule-based diagnostics & 0-100 health scoring
-│   ├── baselines.py          # Statistical baselines: Z-Score & Tukey's IQR
-│   ├── ml_anomaly.py         # Isolation Forest anomaly detection (Scikit-learn)
-│   └── cleaner.py            # Reviewable cleaning, explicit approval, audit log
+│   ├── ingestion.py           # Resilient CSV reader (delimiters, BOM, size limit)
+│   ├── profiler.py            # Structural & statistical column/dataset profiling
+│   ├── diagnostics.py         # Rule-based diagnostics & 0-100 health scoring
+│   ├── baselines.py           # Statistical baselines: Z-Score & Tukey's IQR
+│   ├── ml_anomaly.py          # Isolation Forest anomaly detection (Scikit-learn)
+│   └── cleaner.py             # Reviewable cleaning, explicit approval, audit log
 ├── evaluation/
 │   ├── __init__.py
-│   ├── synthetic_benchmark.py # Deterministic ground-truth anomaly generator
-│   └── benchmark_runner.py    # Benchmark comparator & metrics calculator
+│   ├── synthetic_benchmark.py  # Deterministic ground-truth anomaly generator
+│   └── benchmark_runner.py     # Benchmark comparator & metrics calculator
 ├── examples/
-│   ├── run_profiling_demo.py  # Ingestion & quality profiling demo
-│   ├── run_cleaning_demo.py   # Reviewable cleaning & audit trail demo
+│   ├── run_profiling_demo.py   # Ingestion & quality profiling demo
+│   ├── run_cleaning_demo.py    # Reviewable cleaning & audit trail demo
 │   └── sample_dirty_dataset.csv
 └── tests/
     ├── __init__.py
-    ├── test_ingestion.py      # Ingestion & file resilience tests
-    ├── test_profiler.py       # Statistical profiling & null tests
-    ├── test_diagnostics.py    # Rule diagnostic & severity tests
-    ├── test_baselines.py      # Z-Score & IQR tests
-    ├── test_ml_anomaly.py     # Isolation Forest tests
-    ├── test_benchmark.py      # Benchmark & metric calculation tests
-    ├── test_cleaner.py        # Reviewable cleaning, approval & audit tests
-    └── test_e2e.py            # End-to-end integration tests
+    ├── test_ingestion.py       # Ingestion & file resilience tests
+    ├── test_profiler.py        # Statistical profiling & null tests
+    ├── test_diagnostics.py     # Rule diagnostic & severity tests
+    ├── test_baselines.py       # Z-Score & IQR tests
+    ├── test_ml_anomaly.py      # Isolation Forest tests
+    ├── test_benchmark.py       # Benchmark & metric calculation tests
+    ├── test_cleaner.py         # Reviewable cleaning, approval & audit tests
+    ├── test_ui.py              # Visualizers, report generator, app imports
+    └── test_e2e.py             # End-to-end integration tests
 ```
 
 ---
 
-## Core Capabilities
+## Core Capabilities by Stage
 
 ### 1. Data Ingestion & Quality Profiling (Stage 1)
 - **Resilient CSV Ingestion** (`core/ingestion.py`): Delimiter auto-detection (`,`, `;`, `\t`, `|`), UTF-8/BOM/Latin-1 encoding handling, binary/null-byte rejection, 50MB safety limit, and guaranteed file immutability.
@@ -78,63 +93,14 @@ DataDoctor-AI/
 - **Structured Audit Trail**: Records proposal ID, operation, parameter changes, affected row/cell counts, and ISO timestamp. Excludes raw sensitive data by default.
 - **Before-and-After Quality Comparison**: Computes before/after profiles and articulates technical trade-offs honestly.
 
----
-
-## Example: Proposal-Review-Approval Workflow
-
-```python
-from core.ingestion import load_csv
-from core.cleaner import DataCleaner
-from core.ml_anomaly import detect_isolation_forest_anomalies
-
-# 1. Ingest original dataset safely (remains untouched)
-df, metadata = load_csv("data.csv")
-
-# 2. Run optional anomaly detection
-anomaly_result = detect_isolation_forest_anomalies(df)
-
-# 3. Initialize cleaner session and generate proposals
-cleaner = DataCleaner(df)
-proposals = cleaner.generate_proposals(anomaly_results=[anomaly_result])
-
-# 4. Preview a specific proposal without applying it
-preview = cleaner.preview_proposal("PROP-DEDUP-001")
-print(f"Proposed change: {preview.rows_before} -> {preview.rows_after} rows")
-print(f"Explanation: {preview.explanation}")
-print(f"Sample Diffs: {preview.sample_diff}")
-
-# 5. Explicitly approve and apply
-cleaned_df, audit_record = cleaner.apply_proposal("PROP-DEDUP-001", approved=True)
-
-# 6. Inspect structured audit log
-print(cleaner.get_audit_log())
-
-# 7. Review before-and-after quality comparison
-comparison = cleaner.compare_quality()
-print(f"Health Score change: {comparison.health_score_before} -> {comparison.health_score_after}")
-for note in comparison.evaluation_notes:
-    print(f"Trade-off: {note}")
-```
-
----
-
-## Profiling Issues vs. Statistical Anomalies
-
-| Dimension | Profiling Issues (Rule-Based) | Statistical Anomalies (ML & Baselines) |
-| :--- | :--- | :--- |
-| **Nature** | Syntactic, structural, or domain rule violations. | Probabilistic deviations in numerical feature space. |
-| **Examples** | Missing values, duplicate rows, text in numeric columns, negative age. | An observation where feature combinations are rare. |
-| **Ground Truth** | Objectively defective according to data schema. | **Unusual, not automatically erroneous or fraudulent.** |
-| **Detection** | Deterministic heuristics and pattern matching. | Unsupervised models (Isolation Forest, Z-Score, IQR). |
-
----
-
-## Known Limitations and Cleaning Risks
-
-1. **Information Loss from Dropping Rows**: Dropping rows with missing values or anomalies reduces sample size, reduces statistical power, and can introduce severe selection bias if missingness is not Missing Completely At Random (MCAR).
-2. **Variance Compression from Imputation**: Mean/median/mode imputation preserves row count but artificially reduces feature variance and can distort covariances between features.
-3. **Anomalies are Not Automatically Errors**: An anomaly flag simply indicates a point in a low-density region of the feature space. In real-world data, anomalies frequently represent critical edge cases, high-value customers, rare failures, or genuine discoveries. Removing them blindly distorts ground-truth populations.
-4. **Always Retain Original Copy**: DataDoctor AI enforces that the original DataFrame is never modified in place, but practitioners should always archive the original untouched raw files.
+### 4. Interactive Streamlit Dashboard (Stage 4)
+- **Single-Command Launch**: Run `streamlit run app/main.py`.
+- **5 Integrated Views**:
+  1. **Overview & Ingestion**: Ingestion metadata, dataset dimensions, inferred types, and interactive data preview.
+  2. **Quality Profiling**: Transparent Health Score (0–100) with penalty breakdown, Plotly missingness charts, defect severity donut charts, and expandable defect catalog.
+  3. **Anomaly Detection**: Interactive Isolation Forest and baseline configuration, 2D feature-space scatter visualization, flagged records table, and reproducible synthetic benchmark results.
+  4. **Reviewable Cleaning**: Proposal catalog, dry-run change preview, explicit approval buttons, live audit trail log, and before-and-after quality comparison cards.
+  5. **Export & Audit Reports**: Download Cleaned CSV, Untouched Original CSV, formatted Markdown Quality Audit Report, and structured JSON Audit Log.
 
 ---
 
@@ -151,16 +117,29 @@ pip install -r requirements.txt
 
 ---
 
-## Verification & Testing
+## Quickstart: Launching the Dashboard
 
-### Run All Automated Tests
+Launch the interactive web application using Streamlit:
 ```bash
-pytest -v
+streamlit run app/main.py
 ```
 
-### Run Profiling Demo
+Once running, navigate to `http://localhost:8501` in your web browser.
+
+### Using the Dashboard:
+1. **Upload Dataset**: Upload any CSV file via the sidebar (or click **"Load Sample Dirty Dataset"** for instant demonstration).
+2. **Inspect Quality**: Navigate to **"2. Quality Profiling"** to view missingness, type errors, duplicate counts, and health score deductions.
+3. **Isolate Anomalies**: Go to **"3. Anomaly Detection"** to configure Isolation Forest or statistical baselines, select numerical features, and inspect the 2D feature-space scatter plot.
+4. **Review & Approve Repairs**: In **"4. Reviewable Cleaning"**, click **"Generate Cleaning Proposals"**, click **"Preview Changes"** to inspect diffs, and click **"Approve & Apply"** to execute approved operations.
+5. **Download Cleaned Data & Reports**: Open **"5. Export & Audit Reports"** to download the cleaned CSV, the untouched original CSV, the comprehensive Markdown Audit Report, and the JSON Audit Log.
+
+---
+
+## Running Verification & Automated Tests
+
+### Run All 70 Automated Tests
 ```bash
-python examples/run_profiling_demo.py
+pytest -v
 ```
 
 ### Run Anomaly Detection Benchmark
@@ -168,14 +147,48 @@ python examples/run_profiling_demo.py
 python evaluation/benchmark_runner.py
 ```
 
-### Run Reviewable Cleaning & Audit Demo
+### Run Profiling Demo Script
+```bash
+python examples/run_profiling_demo.py
+```
+
+### Run Reviewable Cleaning Demo Script
 ```bash
 python examples/run_cleaning_demo.py
 ```
 
 ---
 
-## Roadmap
+## Profiling Issues vs. Statistical Anomalies
 
-1. **Interactive UI**: Scheduled for Stage 5 (Streamlit dashboard with Plotly visualizers, interactive proposal checklist, diff inspector, and exportable report).
-2. **Export Engine**: Cleaned CSV exporter and markdown health audit report generator.
+| Dimension | Profiling Issues (Rule-Based) | Statistical Anomalies (ML & Baselines) |
+| :--- | :--- | :--- |
+| **Nature** | Syntactic, structural, or domain rule violations. | Probabilistic deviations in numerical feature space. |
+| **Examples** | Missing values, duplicate rows, text in numeric columns, negative age. | An observation where feature combinations are rare. |
+| **Ground Truth** | Objectively defective according to data schema. | **Unusual, not automatically erroneous or fraudulent.** |
+| **Detection** | Deterministic heuristics and pattern matching. | Unsupervised models (Isolation Forest, Z-Score, IQR). |
+
+---
+
+## Privacy & Data Governance Statement
+
+- **100% On-Premise Execution**: Zero external telemetry, zero LLM APIs, and zero third-party cloud data transfer.
+- **Strict Immutability**: Uploaded files and original DataFrames are never modified in place.
+- **Audit Logging**: Every approved operation produces a structured audit record with UTC timestamp and parameter details.
+- **Sensitive Data Privacy**: Audit logs and reports exclude full row contents by default.
+
+---
+
+## Implemented vs. Deferred Features
+
+| Feature | Status | Notes |
+| :--- | :---: | :--- |
+| Resilient CSV Ingestion (BOM, Delimiters, Size Limit) | ✅ Implemented | Stage 1 (`core/ingestion.py`) |
+| Data Quality Profiling & Health Scoring | ✅ Implemented | Stage 1 (`core/profiler.py`, `core/diagnostics.py`) |
+| Isolation Forest & Statistical Baselines | ✅ Implemented | Stage 2 (`core/ml_anomaly.py`, `core/baselines.py`) |
+| Reproducible Synthetic Anomaly Benchmark | ✅ Implemented | Stage 2 (`evaluation/benchmark_runner.py`) |
+| Reviewable Cleaning, Approval Guard & Audit Trail | ✅ Implemented | Stage 3 (`core/cleaner.py`) |
+| Interactive Streamlit Web Dashboard | ✅ Implemented | Stage 4 (`app/main.py`, `app/components/`) |
+| Cleaned CSV & Markdown Quality Report Exporters | ✅ Implemented | Stage 4 (`app/components/export_view.py`) |
+| User Authentication & Cloud Databases | ⏳ Deferred | Out of scope for standalone screening MVP |
+| Unstructured Text / Image Data Processing | ⏳ Deferred | Focus is strictly on tabular CSV data |
