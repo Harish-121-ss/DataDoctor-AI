@@ -20,6 +20,21 @@ from core.baselines import (
     AnomalyDetectionResult,
 )
 from core.ml_anomaly import detect_isolation_forest_anomalies
+from core.cleaner import (
+    CleaningError,
+    ProposalNotApprovedError,
+    InvalidProposalError,
+    ProposalAlreadyAppliedError,
+    CleaningProposal,
+    ProposalPreview,
+    AuditRecord,
+    QualityComparison,
+    generate_cleaning_proposals,
+    preview_cleaning_proposal,
+    apply_cleaning_proposal,
+    compare_datasets,
+    DataCleaner,
+)
 
 __all__ = [
     "load_csv",
@@ -39,4 +54,17 @@ __all__ = [
     "select_usable_numerical_features",
     "detect_isolation_forest_anomalies",
     "AnomalyDetectionResult",
+    "CleaningError",
+    "ProposalNotApprovedError",
+    "InvalidProposalError",
+    "ProposalAlreadyAppliedError",
+    "CleaningProposal",
+    "ProposalPreview",
+    "AuditRecord",
+    "QualityComparison",
+    "generate_cleaning_proposals",
+    "preview_cleaning_proposal",
+    "apply_cleaning_proposal",
+    "compare_datasets",
+    "DataCleaner",
 ]

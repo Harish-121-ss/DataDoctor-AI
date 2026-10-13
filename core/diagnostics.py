@@ -82,6 +82,15 @@ def detect_type_inconsistencies(series: pd.Series, col_prof: ColumnProfile) -> O
     valid_numeric_count = int(coerced.notna().sum())
     non_numeric_count = int(coerced.isna().sum())
 
+    # Also check if stripping currency symbols and punctuation reveals predominantly numeric data
+    if (valid_numeric_count / len(non_null)) < 0.60:
+        cleaned_str = non_null.astype(str).str.replace(r"[$€£¥, ]", "", regex=True)
+        coerced_cleaned = pd.to_numeric(cleaned_str, errors="coerce")
+        if (coerced_cleaned.notna().sum() / len(non_null)) >= 0.60:
+            coerced = coerced_cleaned
+            valid_numeric_count = int(coerced.notna().sum())
+            non_numeric_count = int(coerced.isna().sum())
+
     # If at least 60% of values are numeric, but there are non-numeric strings
     if non_numeric_count > 0 and (valid_numeric_count / len(non_null)) >= 0.60:
         # Find sample offending values
