@@ -16,7 +16,12 @@ from app.utils.visualizer import (
 )
 
 
-def render_profiling_view(df: pd.DataFrame, report: dict, profile: DatasetProfile):
+def render_profiling_view(
+    df: pd.DataFrame,
+    report: dict,
+    profile: DatasetProfile,
+    initial_report: dict | None = None,
+):
     """Render comprehensive data quality diagnosis and profiling metrics."""
     st.subheader("Data Quality Health & Profiling Diagnosis")
 
@@ -24,10 +29,21 @@ def render_profiling_view(df: pd.DataFrame, report: dict, profile: DatasetProfil
     issues = report.get("issues", [])
     issues_by_sev = report.get("issues_by_severity", {})
 
+    initial_score = initial_report.get("health_score", health_score) if initial_report else health_score
+    score_delta = health_score - initial_score
+    has_delta = abs(score_delta) > 0.01
+
     # Top Health Score Banner
     col_h1, col_h2 = st.columns([1, 2])
     with col_h1:
-        st.metric("Overall Health Score", f"{health_score:.1f} / 100.0")
+        if has_delta:
+            st.metric(
+                "Active Health Score",
+                f"{health_score:.1f} / 100.0",
+                delta=f"{score_delta:+.1f} from baseline ({initial_score:.1f})",
+            )
+        else:
+            st.metric("Overall Health Score", f"{health_score:.1f} / 100.0")
     with col_h2:
         st.info(
             "**Health Score Calculation:** Starts at 100.0 and applies calibrated deductions for "

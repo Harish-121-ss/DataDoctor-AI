@@ -63,6 +63,10 @@ def render_cleaning_view(cleaner: DataCleaner):
                     if st.button("Approve & Apply", key=f"app_{pid}", type="primary"):
                         try:
                             cleaner.apply_proposal(pid, approved=True)
+                            # Invalidate cached preview states because dataframe state changed
+                            for k in list(st.session_state.keys()):
+                                if k.startswith("preview_result_"):
+                                    st.session_state.pop(k, None)
                             st.success(f"Successfully applied proposal {pid}!")
                             st.rerun()
                         except Exception as e:

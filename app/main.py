@@ -48,12 +48,24 @@ def load_dataset(file_source, max_mb: int = 50):
     try:
         max_bytes = max_mb * 1024 * 1024
         df, metadata = load_csv(file_source, max_file_size_bytes=max_bytes)
+        init_profile = profile_dataset(df)
+        init_report = generate_quality_report(df)
+
         st.session_state["raw_df"] = df
         st.session_state["metadata"] = metadata
-        st.session_state["profile"] = profile_dataset(df)
-        st.session_state["quality_report"] = generate_quality_report(df)
+        st.session_state["initial_profile"] = init_profile
+        st.session_state["initial_quality_report"] = init_report
+        st.session_state["profile"] = init_profile
+        st.session_state["quality_report"] = init_report
         st.session_state["cleaner"] = DataCleaner(df)
         st.session_state.pop("latest_anomaly_result", None)
+        st.session_state.pop("benchmark_results", None)
+
+        # Clear any cached dry-run preview states from prior datasets
+        for k in list(st.session_state.keys()):
+            if k.startswith("preview_result_"):
+                st.session_state.pop(k, None)
+
         return True, "Dataset loaded successfully."
     except FileTooLargeError as e:
         return False, f"File too large: {e}"
@@ -86,6 +98,10 @@ def main():
                 st.sidebar.success(msg)
             else:
                 st.sidebar.error(msg)
+    else:
+        # Reset uploader state if user removed the uploaded file
+        if st.session_state.get("_last_uploaded_name") not in (None, "sample_dirty_dataset.csv"):
+            st.session_state["_last_uploaded_name"] = None
 
     # Demo Dataset Loader
     demo_path = PROJECT_ROOT / "examples" / "sample_dirty_dataset.csv"
@@ -136,20 +152,30 @@ def main():
     cleaner: DataCleaner = st.session_state["cleaner"]
     df: pd.DataFrame = cleaner.current_df
     metadata: dict = st.session_state.get("metadata", {})
-    profile = st.session_state.get("profile")
-    quality_report = st.session_state.get("quality_report")
+    initial_report = st.session_state.get("initial_quality_report", st.session_state.get("quality_report"))
+
+    # Compute reactive current profile and quality report if cleaning operations have been applied
+    if len(cleaner.audit_log) > 0:
+        current_profile = profile_dataset(df)
+        current_quality_report = generate_quality_report(df)
+    else:
+        current_profile = st.session_state.get("initial_profile", st.session_state.get("profile"))
+        current_quality_report = initial_report
+
+    st.session_state["profile"] = current_profile
+    st.session_state["quality_report"] = current_quality_report
 
     # Routing based on selected navigation
     if selected_nav.startswith("1."):
-        render_overview_view(df, metadata, profile)
+        render_overview_view(df, metadata, current_profile)
     elif selected_nav.startswith("2."):
-        render_profiling_view(df, quality_report, profile)
+        render_profiling_view(df, current_quality_report, current_profile, initial_report=initial_report)
     elif selected_nav.startswith("3."):
         render_anomaly_view(df)
     elif selected_nav.startswith("4."):
         render_cleaning_view(cleaner)
     elif selected_nav.startswith("5."):
-        render_export_view(cleaner, metadata, quality_report)
+        render_export_view(cleaner, metadata, initial_report)
 
 
 if __name__ == "__main__":

@@ -122,3 +122,69 @@ class TestUIComponentsAndReports:
         import app.main as app_main
         assert hasattr(app_main, "load_dataset")
         assert hasattr(app_main, "main")
+
+    def test_markdown_audit_report_with_remediation_and_comparison(self, sample_df: pd.DataFrame):
+        metadata = {
+            "source": "remediated_data.csv",
+            "file_size_bytes": 2048,
+            "encoding": "utf-8",
+            "delimiter": ",",
+        }
+        report = generate_quality_report(sample_df)
+        cleaner = DataCleaner(sample_df)
+        cleaner.generate_proposals()
+
+        # Find and apply an imputation proposal
+        impute_pid = [pid for pid, p in cleaner.proposals.items() if p.operation.startswith("impute_")][0]
+        cleaner.apply_proposal(impute_pid, approved=True)
+
+        comparison = cleaner.compare_quality()
+        md_output = generate_markdown_audit_report(
+            metadata=metadata,
+            original_report=report,
+            cleaned_df=cleaner.current_df,
+            comparison=comparison,
+            audit_trail=cleaner.audit_log,
+            anomaly_summary={"method": "Isolation Forest", "anomaly_count": 0, "evaluated_rows": 5, "execution_time_ms": 12.5},
+        )
+
+        assert "## 3. Approved Cleaning Actions & Audit Trail" in md_output
+        assert impute_pid in md_output
+        assert "## 4. Before-and-After Quality Comparison" in md_output
+        assert "Overall Health Score" in md_output
+
+    def test_json_audit_log_serialization_and_fields(self, sample_df: pd.DataFrame):
+        cleaner = DataCleaner(sample_df)
+        cleaner.generate_proposals()
+        impute_pid = [pid for pid, p in cleaner.proposals.items() if p.operation.startswith("impute_")][0]
+        cleaner.apply_proposal(impute_pid, approved=True)
+
+        audit_dicts = cleaner.get_audit_log()
+        assert len(audit_dicts) == 1
+        record = audit_dicts[0]
+
+        # Verify JSON serializability
+        serialized = json.dumps(audit_dicts, indent=2)
+        deserialized = json.loads(serialized)
+        assert len(deserialized) == 1
+        assert deserialized[0]["proposal_id"] == impute_pid
+        assert deserialized[0]["status"] == "SUCCESS"
+
+        # Verify privacy: no raw row dump
+        assert "row_data" not in record
+        assert "raw_values" not in record
+
+    def test_cleaned_csv_export_content_fidelity(self, sample_df: pd.DataFrame):
+        cleaner = DataCleaner(sample_df)
+        cleaner.generate_proposals()
+        impute_pid = [pid for pid, p in cleaner.proposals.items() if p.operation.startswith("impute_")][0]
+        cleaner.apply_proposal(impute_pid, approved=True)
+
+        csv_str = cleaner.current_df.to_csv(index=False)
+        reloaded = pd.read_csv(pd.io.common.StringIO(csv_str))
+
+        assert len(reloaded) == len(cleaner.current_df)
+        # Original had missing value, cleaned should have fewer or zero missing in target column
+        target_col = cleaner.proposals[impute_pid].column
+        assert reloaded[target_col].isna().sum() < sample_df[target_col].isna().sum()
+
